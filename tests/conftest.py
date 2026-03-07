@@ -36,6 +36,6 @@ def _mock_db_time(*, model, time=datetime(2026, 1, 1)):
         if hasattr(target, 'created_at'):
             target.created_at = time
 
-        event.listen(model, 'before_insert', fake_time_hook)
-        yield time
-        event.remove(model, 'before_insert', fake_time_hook)
+    event.listen(model, 'before_insert', fake_time_hook)
+    yield time
+    event.remove(model, 'before_insert', fake_time_hook)

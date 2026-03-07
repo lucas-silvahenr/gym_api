@@ -10,8 +10,8 @@ def test_create_user(session, mock_time):
         new_user = User(
             username='John Doe', email='johndoe@example.com', password='secret'
         )
-    session.add(new_user)
-    session.commit()
+        session.add(new_user)
+        session.commit()
     user = session.scalar(select(User).where(User.username == 'John Doe'))
 
     assert asdict(user) == {
