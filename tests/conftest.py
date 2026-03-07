@@ -10,6 +10,7 @@ from sqlalchemy.pool import StaticPool
 from gym_api.app import app
 from gym_api.database import get_session
 from gym_api.models import User, table_registry
+from gym_api.security import get_password_hash
 
 
 @pytest.fixture
@@ -40,13 +41,27 @@ def session():
 
 @pytest.fixture
 def user(session):
+    password = 'secret'
     user = User(
-        username='John Doe', email='johndoe@example.com', password='secret'
+        username='John Doe',
+        email='johndoe@example.com',
+        password=get_password_hash(password),
     )
     session.add(user)
     session.commit()
     session.refresh(user)
+
+    user.clean_password = password
     return user
+
+
+@pytest.fixture
+def token(client, user):
+    response = client.post(
+        '/token',
+        data={'username': user.email, 'password': user.clean_password},
+    )
+    return response.json()['access_token']
 
 
 @pytest.fixture
