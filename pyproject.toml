@@ -55,3 +55,6 @@ run = 'fastapi dev gym_api/app.py'
 pre_test = 'task lint'
 test = 'pytest -s -x --cov=gym_api -vv'
 post_test = 'coverage html'
+
+[tool.typos.default]
+extend-ignore-identifiers-re = ["selectin"]

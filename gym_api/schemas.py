@@ -26,8 +26,10 @@ class ExerciseSchema(BaseModel):
     name: str
     description: str | None
 
+
 class ResponseExerciseSchema(ExerciseSchema):
     id: int
+
 
 class ExerciseList(BaseModel):
     exercises: list[ResponseExerciseSchema]
@@ -42,10 +44,12 @@ class WorkoutExerciseSchema(BaseModel):
 
     model_config = ConfigDict(from_attributes=True)
 
+
 class WorkoutSessionSchema(BaseModel):
     name: str
     exercises: list[WorkoutExerciseSchema]
     model_config = ConfigDict(from_attributes=True)
+
 
 class ResponseWorkoutSessionList(BaseModel):
     sessions: list[WorkoutSessionSchema]

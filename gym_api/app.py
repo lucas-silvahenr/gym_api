@@ -8,22 +8,22 @@ from sqlalchemy.orm import Session, selectinload
 
 from gym_api.database import get_session
 from gym_api.models import (
-    User,
     PublicExercise,
+    User,
     WorkoutExercise,
     WorkoutSession,
 )
 from gym_api.schemas import (
+    ExerciseList,
+    ExerciseSchema,
     Message,
+    ResponseExerciseSchema,
+    ResponseWorkoutSessionList,
     Token,
     UserPublic,
     UserSchema,
-    ExerciseSchema,
-    ExerciseList,
     WorkoutExerciseSchema,
-    ResponseWorkoutSessionList,
     WorkoutSessionSchema,
-    ResponseExerciseSchema,
 )
 from gym_api.security import (
     create_access_token,
@@ -213,4 +213,3 @@ def read_all_sessions(
         .options(selectinload(WorkoutSession.exercises))
     ).all()
     return {'sessions': all_sessions}
-
