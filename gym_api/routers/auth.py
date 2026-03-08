@@ -27,13 +27,14 @@ def login_for_access_token(
     user = session.scalar(select(User).where(User.email == form_data.username))
     if not user:
         raise HTTPException(
-            status_code=HTTPStatus.UNAUTHORIZED,
-            detail='Incorrect email or password',
+            status_code=HTTPStatus.NOT_FOUND,
+            detail='User not found',
         )
+
     if not verify_password(form_data.password, user.password):
         raise HTTPException(
             status_code=HTTPStatus.UNAUTHORIZED,
-            detail='Incorrect email or password',
+            detail='Incorrect password',
         )
     access_token = create_access_token(data={'sub': user.email})
 
