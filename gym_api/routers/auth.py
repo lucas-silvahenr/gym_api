@@ -11,12 +11,14 @@ from gym_api.models import User
 from gym_api.schemas import Token
 from gym_api.security import (
     create_access_token,
+    get_current_user,
     verify_password,
 )
 
 router = APIRouter(prefix='/auth', tags=['auth'])
 AnnotatedSession = Annotated[Session, Depends(get_session)]
 OAuth2Form = Annotated[OAuth2PasswordRequestForm, Depends()]
+CurrentUser = Annotated[User, Depends(get_current_user)]
 
 
 @router.post('/token', response_model=Token)
@@ -39,3 +41,9 @@ def login_for_access_token(
     access_token = create_access_token(data={'sub': user.email})
 
     return {'access_token': access_token, 'token_type': 'bearer'}
+
+
+@router.post('/refresh_token', response_model=Token)
+def refresh_accesstoken(user: CurrentUser):
+    new_access_token = create_access_token(data={'sub': user.email})
+    return {'access_token': new_access_token, 'token_type': 'bearer'}
