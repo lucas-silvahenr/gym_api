@@ -4,11 +4,27 @@ from fastapi import Depends, FastAPI, HTTPException
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload
 
 from gym_api.database import get_session
-from gym_api.models import User
-from gym_api.schemas import Message, Token, UserPublic, UserSchema
+from gym_api.models import (
+    User,
+    PublicExercise,
+    WorkoutExercise,
+    WorkoutSession,
+)
+from gym_api.schemas import (
+    Message,
+    Token,
+    UserPublic,
+    UserSchema,
+    ExerciseSchema,
+    ExerciseList,
+    WorkoutExerciseSchema,
+    ResponseWorkoutSessionList,
+    WorkoutSessionSchema,
+    ResponseExerciseSchema,
+)
 from gym_api.security import (
     create_access_token,
     get_current_user,
@@ -114,3 +130,87 @@ def login_for_access_token(
     access_token = create_access_token(data={'sub': user.email})
 
     return {'access_token': access_token, 'token_type': 'bearer'}
+
+
+@app.post('/exercise', response_model=ResponseExerciseSchema)
+def create_exercise(
+    exercise: ExerciseSchema, session: Session = Depends(get_session)
+):
+    new_exercise = session.scalar(
+        select(PublicExercise).where(PublicExercise.name == exercise.name)
+    )
+    if new_exercise:
+        raise HTTPException(
+            status_code=HTTPStatus.CONFLICT,
+            detail='This exercise already exists in database',
+        )
+    new_exercise = PublicExercise(
+        name=exercise.name, description=exercise.description
+    )
+    session.add(new_exercise)
+    session.commit()
+    session.refresh(new_exercise)
+
+    return new_exercise
+
+
+@app.get('/all-exercises', response_model=ExerciseList)
+def read_exercises(session: Session = Depends(get_session)):
+    all_exercises = session.scalars(select(PublicExercise)).all()
+    return {'exercises': all_exercises}
+
+
+@app.post('/workout-session', response_model=WorkoutSessionSchema)
+def creat_workout_session(
+    workout_session: WorkoutSessionSchema,
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user),
+):
+    new_workout_session = WorkoutSession(
+        user_id=current_user.id, name=workout_session.name
+    )
+    session.add(new_workout_session)
+    session.commit()
+    session.refresh(new_workout_session)
+
+    return new_workout_session
+
+
+@app.post('/workout-exercise', response_model=WorkoutExerciseSchema)
+def create_workout_exercise(
+    workout_exercise: WorkoutExerciseSchema,
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user),
+):
+    if not workout_exercise.session_id:
+        raise HTTPException(
+            status_code=HTTPStatus.CONFLICT, detail='Session does not exist'
+        )
+
+    new_workout_exercise = WorkoutExercise(
+        session_id=workout_exercise.session_id,
+        exercise_id=workout_exercise.exercise_id,
+        order=workout_exercise.order,
+        rep=workout_exercise.rep,
+        weight=workout_exercise.weight,
+    )
+
+    session.add(new_workout_exercise)
+    session.commit()
+    session.refresh(new_workout_exercise)
+
+    return new_workout_exercise
+
+
+@app.get('/all-sessions', response_model=ResponseWorkoutSessionList)
+def read_all_sessions(
+    current_user: User = Depends(get_current_user),
+    session: Session = Depends(get_session),
+):
+    all_sessions = session.scalars(
+        select(WorkoutSession)
+        .where(WorkoutSession.user_id == current_user.id)
+        .options(selectinload(WorkoutSession.exercises))
+    ).all()
+    return {'sessions': all_sessions}
+

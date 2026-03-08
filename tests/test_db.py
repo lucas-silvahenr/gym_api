@@ -19,5 +19,6 @@ def test_create_user(session, mock_time):
         'username': 'John Doe',
         'email': 'johndoe@example.com',
         'password': 'secret',
+        'workout_sessions': [],
         'created_at': time,
     }
