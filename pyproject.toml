@@ -36,7 +36,7 @@ extend-exclude = ['migrations']
 
 [tool.ruff.lint]
 preview = true
-select = ['I', 'F', 'E', 'W', 'PL', 'PT']
+select = ['I', 'F', 'E', 'W', 'PL', 'PT', 'FAST']
 
 [tool.ruff.format]
 preview = true
@@ -52,7 +52,7 @@ lint = 'ruff check'
 pre_format = 'ruff check --fix'
 format = 'ruff format'
 run = 'fastapi dev gym_api/app.py'
-pre_test = 'task lint'
+pre_test = 'task format'
 test = 'pytest -s -x --cov=gym_api -vv'
 post_test = 'coverage html'
 
