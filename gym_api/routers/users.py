@@ -25,6 +25,16 @@ CurrentUser = Annotated[User, Depends(get_current_user)]
 
 @router.post('/', response_model=UserPublic, status_code=HTTPStatus.CREATED)
 def create_user(user: UserSchema, session: AnnotatedSession):
+    if not user.password:
+        raise HTTPException(
+            status_code=HTTPStatus.UNPROCESSABLE_ENTITY,
+            detail='Password cannot be empty',
+        )
+    if not user.username:
+        raise HTTPException(
+            status_code=HTTPStatus.UNPROCESSABLE_ENTITY,
+            detail='Username cannot be empty',
+        )
     db_user = session.scalar(
         select(User).where(
             (User.username == user.username) | (User.email == user.email)
@@ -84,12 +94,17 @@ def delete_user(
     session: AnnotatedSession,
     current_user: CurrentUser,
 ):
+    user_to_delete = session.scalar(select(User).where(User.id == user_id))
+    if not user_to_delete:
+        raise HTTPException(
+            status_code=HTTPStatus.NOT_FOUND, detail='User not found'
+        )
     if current_user.id != user_id:
         raise HTTPException(
             status_code=HTTPStatus.FORBIDDEN,
-            detail='User not found',
+            detail='You do not have permission to delete this user',
         )
-    session.delete(current_user)
+    session.delete(user_to_delete)
     session.commit()
 
     return {'message': 'User deleted'}
