@@ -47,7 +47,7 @@ class WorkoutExerciseSchema(BaseModel):
 
 class WorkoutSessionSchema(BaseModel):
     name: str
-    exercises: list[WorkoutExerciseSchema]
+    exercises: list[WorkoutExerciseSchema] = []
     model_config = ConfigDict(from_attributes=True)
 
 

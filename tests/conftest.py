@@ -9,7 +9,13 @@ from sqlalchemy.pool import StaticPool
 
 from gym_api.app import app
 from gym_api.database import get_session
-from gym_api.models import User, table_registry
+from gym_api.models import (
+    PublicExercise,
+    User,
+    WorkoutExercise,
+    WorkoutSession,
+    table_registry,
+)
 from gym_api.security import get_password_hash
 
 
@@ -69,6 +75,42 @@ def other_user(session):
 
     other_user.clean_password = password
     return other_user
+
+
+@pytest.fixture
+def exercise(session):
+    exercise = PublicExercise(
+        name='Supino',
+        description='This is a description of the Supino exercise.',
+    )
+    session.add(exercise)
+    session.commit()
+    session.refresh(exercise)
+    return exercise
+
+
+@pytest.fixture
+def workout_session(session, user):
+    workout_session = WorkoutSession(name='Biceps Workout', user_id=user.id)
+    session.add(workout_session)
+    session.commit()
+    session.refresh(workout_session)
+    return workout_session
+
+
+@pytest.fixture
+def workout_exercise(session, workout_session, exercise):
+    workout_exercise = WorkoutExercise(
+        session_id=workout_session.id,
+        exercise_id=exercise.id,
+        order=1,
+        rep=12,
+        weight=50,
+    )
+    session.add(workout_exercise)
+    session.commit()
+    session.refresh(workout_exercise)
+    return workout_exercise
 
 
 @pytest.fixture

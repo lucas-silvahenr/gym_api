@@ -28,8 +28,17 @@ AnnotatedSession = Annotated[Session, Depends(get_session)]
 CurrentUser = Annotated[User, Depends(get_current_user)]
 
 
-@router.post('/exercise', response_model=ResponseExerciseSchema)
+@router.post(
+    '/exercise',
+    response_model=ResponseExerciseSchema,
+    status_code=HTTPStatus.CREATED,
+)
 def create_exercise(exercise: ExerciseSchema, session: AnnotatedSession):
+    if not exercise.name:
+        raise HTTPException(
+            status_code=HTTPStatus.UNPROCESSABLE_ENTITY,
+            detail='Name cannot be empty',
+        )
     new_exercise = session.scalar(
         select(PublicExercise).where(PublicExercise.name == exercise.name)
     )
@@ -54,12 +63,21 @@ def read_exercises(session: AnnotatedSession):
     return {'exercises': all_exercises}
 
 
-@router.post('/workout-session', response_model=WorkoutSessionSchema)
+@router.post(
+    '/workout-session',
+    response_model=WorkoutSessionSchema,
+    status_code=HTTPStatus.CREATED,
+)
 def creat_workout_session(
     workout_session: WorkoutSessionSchema,
     session: AnnotatedSession,
     current_user: CurrentUser,
 ):
+    if not workout_session.name:
+        raise HTTPException(
+            status_code=HTTPStatus.UNPROCESSABLE_ENTITY,
+            detail='Name cannot be empty',
+        )
     new_workout_session = WorkoutSession(
         user_id=current_user.id, name=workout_session.name
     )
@@ -70,7 +88,11 @@ def creat_workout_session(
     return new_workout_session
 
 
-@router.post('/workout-exercise', response_model=WorkoutExerciseSchema)
+@router.post(
+    '/workout-exercise',
+    response_model=WorkoutExerciseSchema,
+    status_code=HTTPStatus.CREATED,
+)
 def create_workout_exercise(
     workout_exercise: WorkoutExerciseSchema,
     session: AnnotatedSession,
@@ -78,9 +100,27 @@ def create_workout_exercise(
 ):
     if not workout_exercise.session_id:
         raise HTTPException(
-            status_code=HTTPStatus.CONFLICT, detail='Session does not exist'
+            status_code=HTTPStatus.UNPROCESSABLE_ENTITY,
+            detail='Session cannot be empty',
         )
-
+    workout_session = session.scalar(
+        select(WorkoutSession).where(
+            WorkoutSession.id == workout_exercise.session_id
+        )
+    )
+    if not workout_session:
+        raise HTTPException(
+            status_code=HTTPStatus.NOT_FOUND, detail='Session not found'
+        )
+    exercise = session.scalar(
+        select(PublicExercise).where(
+            PublicExercise.id == workout_exercise.exercise_id
+        )
+    )
+    if not exercise:
+        raise HTTPException(
+            status_code=HTTPStatus.NOT_FOUND, detail='Exercise not found'
+        )
     new_workout_exercise = WorkoutExercise(
         session_id=workout_exercise.session_id,
         exercise_id=workout_exercise.exercise_id,
