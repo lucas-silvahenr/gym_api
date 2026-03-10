@@ -180,7 +180,12 @@ def test_creat_workout_exercise_invalid_exercise_id(
     assert response.json() == {'detail': 'Exercise not found'}
 
 
-def test_read_all_sessions(client, workout_session, workout_exercise, token):
+def test_read_all_sessions(
+    client,
+    workout_session,
+    workout_exercise,
+    token,
+):
     response = client.get(
         'gym/all-sessions', headers={'Authorization': f'Bearer {token}'}
     )
@@ -192,11 +197,11 @@ def test_read_all_sessions(client, workout_session, workout_exercise, token):
                 'name': 'Biceps Workout',
                 'exercises': [
                     {
-                        'exercise_id': 1,
-                        'session_id': 1,
-                        'order': 1,
-                        'rep': 12,
-                        'weight': 50.0,
+                        'exercise_id': workout_exercise.id,
+                        'session_id': workout_session.id,
+                        'order': workout_exercise.order,
+                        'rep': workout_exercise.rep,
+                        'weight': workout_exercise.weight,
                     }
                 ],
             }

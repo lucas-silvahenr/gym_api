@@ -4,7 +4,7 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
-from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from gym_api.database import get_session
 from gym_api.models import User
@@ -19,12 +19,12 @@ from gym_api.security import (
 )
 
 router = APIRouter(prefix='/users', tags=['users'])
-AnnotatedSession = Annotated[Session, Depends(get_session)]
+AnnotatedSession = Annotated[AsyncSession, Depends(get_session)]
 CurrentUser = Annotated[User, Depends(get_current_user)]
 
 
 @router.post('/', response_model=UserPublic, status_code=HTTPStatus.CREATED)
-def create_user(user: UserSchema, session: AnnotatedSession):
+async def create_user(user: UserSchema, session: AnnotatedSession):
     if not user.password:
         raise HTTPException(
             status_code=HTTPStatus.UNPROCESSABLE_ENTITY,
@@ -35,7 +35,7 @@ def create_user(user: UserSchema, session: AnnotatedSession):
             status_code=HTTPStatus.UNPROCESSABLE_ENTITY,
             detail='Username cannot be empty',
         )
-    db_user = session.scalar(
+    db_user = await session.scalar(
         select(User).where(
             (User.username == user.username) | (User.email == user.email)
         )
@@ -57,13 +57,13 @@ def create_user(user: UserSchema, session: AnnotatedSession):
         username=user.username, email=user.email, password=hashed_password
     )
     session.add(db_user)
-    session.commit()
-    session.refresh(db_user)
+    await session.commit()
+    await session.refresh(db_user)
     return db_user
 
 
 @router.put('/{user_id}', response_model=UserPublic, status_code=HTTPStatus.OK)
-def update_user(
+async def update_user(
     user_id: int,
     user: UserSchema,
     session: AnnotatedSession,
@@ -77,8 +77,8 @@ def update_user(
         current_user.username = user.username
         current_user.email = user.email
         current_user.password = get_password_hash(user.password)
-        session.commit()
-        session.refresh(current_user)
+        await session.commit()
+        await session.refresh(current_user)
         return current_user
 
     except IntegrityError:
@@ -89,12 +89,14 @@ def update_user(
 
 
 @router.delete('/{user_id}', response_model=Message, status_code=HTTPStatus.OK)
-def delete_user(
+async def delete_user(
     user_id: int,
     session: AnnotatedSession,
     current_user: CurrentUser,
 ):
-    user_to_delete = session.scalar(select(User).where(User.id == user_id))
+    user_to_delete = await session.scalar(
+        select(User).where(User.id == user_id)
+    )
     if not user_to_delete:
         raise HTTPException(
             status_code=HTTPStatus.NOT_FOUND, detail='User not found'
@@ -104,7 +106,7 @@ def delete_user(
             status_code=HTTPStatus.FORBIDDEN,
             detail='You do not have permission to delete this user',
         )
-    session.delete(user_to_delete)
-    session.commit()
+    await session.delete(user_to_delete)
+    await session.commit()
 
     return {'message': 'User deleted'}

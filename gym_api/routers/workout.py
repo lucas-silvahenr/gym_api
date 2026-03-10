@@ -3,7 +3,8 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import select
-from sqlalchemy.orm import Session, selectinload
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from gym_api.database import get_session
 from gym_api.models import (
@@ -24,7 +25,7 @@ from gym_api.security import get_current_user
 
 router = APIRouter(prefix='/gym', tags=['gym'])
 
-AnnotatedSession = Annotated[Session, Depends(get_session)]
+AnnotatedSession = Annotated[AsyncSession, Depends(get_session)]
 CurrentUser = Annotated[User, Depends(get_current_user)]
 
 
@@ -33,13 +34,13 @@ CurrentUser = Annotated[User, Depends(get_current_user)]
     response_model=ResponseExerciseSchema,
     status_code=HTTPStatus.CREATED,
 )
-def create_exercise(exercise: ExerciseSchema, session: AnnotatedSession):
+async def create_exercise(exercise: ExerciseSchema, session: AnnotatedSession):
     if not exercise.name:
         raise HTTPException(
             status_code=HTTPStatus.UNPROCESSABLE_ENTITY,
             detail='Name cannot be empty',
         )
-    new_exercise = session.scalar(
+    new_exercise = await session.scalar(
         select(PublicExercise).where(PublicExercise.name == exercise.name)
     )
     if new_exercise:
@@ -51,16 +52,16 @@ def create_exercise(exercise: ExerciseSchema, session: AnnotatedSession):
         name=exercise.name, description=exercise.description
     )
     session.add(new_exercise)
-    session.commit()
-    session.refresh(new_exercise)
+    await session.commit()
+    await session.refresh(new_exercise)
 
     return new_exercise
 
 
 @router.get('/all-exercises', response_model=ExerciseList)
-def read_exercises(session: AnnotatedSession):
-    all_exercises = session.scalars(select(PublicExercise)).all()
-    return {'exercises': all_exercises}
+async def read_exercises(session: AnnotatedSession):
+    all_exercises = await session.scalars(select(PublicExercise))
+    return {'exercises': all_exercises.all()}
 
 
 @router.post(
@@ -68,7 +69,7 @@ def read_exercises(session: AnnotatedSession):
     response_model=WorkoutSessionSchema,
     status_code=HTTPStatus.CREATED,
 )
-def creat_workout_session(
+async def creat_workout_session(
     workout_session: WorkoutSessionSchema,
     session: AnnotatedSession,
     current_user: CurrentUser,
@@ -82,8 +83,8 @@ def creat_workout_session(
         user_id=current_user.id, name=workout_session.name
     )
     session.add(new_workout_session)
-    session.commit()
-    session.refresh(new_workout_session)
+    await session.commit()
+    await session.refresh(new_workout_session)
 
     return new_workout_session
 
@@ -93,7 +94,7 @@ def creat_workout_session(
     response_model=WorkoutExerciseSchema,
     status_code=HTTPStatus.CREATED,
 )
-def create_workout_exercise(
+async def create_workout_exercise(
     workout_exercise: WorkoutExerciseSchema,
     session: AnnotatedSession,
     current_user: CurrentUser,
@@ -103,7 +104,7 @@ def create_workout_exercise(
             status_code=HTTPStatus.UNPROCESSABLE_ENTITY,
             detail='Session cannot be empty',
         )
-    workout_session = session.scalar(
+    workout_session = await session.scalar(
         select(WorkoutSession).where(
             WorkoutSession.id == workout_exercise.session_id
         )
@@ -112,7 +113,7 @@ def create_workout_exercise(
         raise HTTPException(
             status_code=HTTPStatus.NOT_FOUND, detail='Session not found'
         )
-    exercise = session.scalar(
+    exercise = await session.scalar(
         select(PublicExercise).where(
             PublicExercise.id == workout_exercise.exercise_id
         )
@@ -130,20 +131,27 @@ def create_workout_exercise(
     )
 
     session.add(new_workout_exercise)
-    session.commit()
-    session.refresh(new_workout_exercise)
+    await session.commit()
+    await session.refresh(new_workout_exercise)
 
     return new_workout_exercise
 
 
 @router.get('/all-sessions', response_model=ResponseWorkoutSessionList)
-def read_all_sessions(
+async def read_all_sessions(
     current_user: CurrentUser,
     session: AnnotatedSession,
 ):
-    all_sessions = session.scalars(
+    result = await session.execute(
         select(WorkoutSession)
         .where(WorkoutSession.user_id == current_user.id)
         .options(selectinload(WorkoutSession.exercises))
-    ).all()
-    return {'sessions': all_sessions}
+    )
+    sessions = result.scalars().all()
+
+    for s in sessions:
+        await session.refresh(
+            s, attribute_names=['exercises']
+        )  # Forçar recarregamento das relações (solução provisória)
+
+    return {'sessions': sessions}

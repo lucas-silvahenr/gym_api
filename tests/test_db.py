@@ -1,18 +1,22 @@
 from dataclasses import asdict
 
+import pytest
 from sqlalchemy import select
 
 from gym_api.models import User
 
 
-def test_create_user(session, mock_time):
+@pytest.mark.asyncio
+async def test_create_user(session, mock_time):
     with mock_time(model=User) as time:
         new_user = User(
             username='John Doe', email='johndoe@example.com', password='secret'
         )
         session.add(new_user)
-        session.commit()
-    user = session.scalar(select(User).where(User.username == 'John Doe'))
+        await session.commit()
+    user = await session.scalar(
+        select(User).where(User.username == 'John Doe')
+    )
 
     assert asdict(user) == {
         'id': 1,
