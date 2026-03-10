@@ -43,6 +43,18 @@ def test_create_exercise_already_exists(client, exercise):
     }
 
 
+def test_delete_exercise(client, exercise):
+    response = client.delete(f'/gym/exercise/{exercise.id}')
+    assert response.status_code == HTTPStatus.OK
+    assert response.json() == {'message': 'Exercise deleted'}
+
+
+def test_delete_inexistent_exercise(client):
+    response = client.delete('/gym/exercise/999')
+    assert response.status_code == HTTPStatus.NOT_FOUND
+    assert response.json() == {'detail': 'Exercise not found'}
+
+
 def test_read_all_exercises(client, exercise):
     response = client.get('/gym/all-exercises')
     exercise_dict = [
@@ -102,6 +114,26 @@ def test_create_workout_session_with_invalid_token(client):
     )
     assert response.status_code == HTTPStatus.UNAUTHORIZED
     assert response.json() == {'detail': 'Could not validate credentials'}
+
+
+def test_delete_workout_session(client, workout_session, token):
+    response = client.delete(
+        f'/gym/workout-session/{workout_session.id}',
+        headers={'Authorization': f'Bearer {token}'},
+    )
+
+    assert response.status_code == HTTPStatus.OK
+    assert response.json() == {'message': 'Workout Session deleted'}
+
+
+def test_delete_inexistent_workout_session(client, token):
+    response = client.delete(
+        '/gym/workout-session/999',
+        headers={'Authorization': f'Bearer {token}'},
+    )
+
+    assert response.status_code == HTTPStatus.NOT_FOUND
+    assert response.json() == {'detail': 'Workout Session not found'}
 
 
 def test_creat_workout_exercise(client, workout_session, token, exercise):
@@ -178,6 +210,26 @@ def test_creat_workout_exercise_invalid_exercise_id(
 
     assert response.status_code == HTTPStatus.NOT_FOUND
     assert response.json() == {'detail': 'Exercise not found'}
+
+
+def test_delete_workout_exercise(client, workout_exercise, token):
+    response = client.delete(
+        f'/gym/workout-exercise/{workout_exercise.id}',
+        headers={'Authorization': f'Bearer {token}'},
+    )
+
+    assert response.status_code == HTTPStatus.OK
+    assert response.json() == {'message': 'Workout Exercise deleted'}
+
+
+def test_delete_inexistent_workout_exercise(client, token):
+    response = client.delete(
+        '/gym/workout-exercise/999',
+        headers={'Authorization': f'Bearer {token}'},
+    )
+
+    assert response.status_code == HTTPStatus.NOT_FOUND
+    assert response.json() == {'detail': 'Workout Exercise not found'}
 
 
 def test_read_all_sessions(

@@ -16,6 +16,7 @@ from gym_api.models import (
 from gym_api.schemas import (
     ExerciseList,
     ExerciseSchema,
+    Message,
     ResponseExerciseSchema,
     ResponseWorkoutSessionList,
     WorkoutExerciseSchema,
@@ -64,6 +65,20 @@ async def read_exercises(session: AnnotatedSession):
     return {'exercises': all_exercises.all()}
 
 
+@router.delete('/exercise/{exercise_id}', response_model=Message)
+async def delete_exercise(exercise_id: int, session: AnnotatedSession):
+    exercise_to_delete = await session.scalar(
+        select(PublicExercise).where(PublicExercise.id == exercise_id)
+    )
+    if not exercise_to_delete:
+        raise HTTPException(
+            status_code=HTTPStatus.NOT_FOUND, detail='Exercise not found'
+        )
+    await session.delete(exercise_to_delete)
+    await session.commit()
+    return {'message': 'Exercise deleted'}
+
+
 @router.post(
     '/workout-session',
     response_model=WorkoutSessionSchema,
@@ -87,6 +102,31 @@ async def creat_workout_session(
     await session.refresh(new_workout_session)
 
     return new_workout_session
+
+
+@router.delete('/workout-session/{workout_session_id}', response_model=Message)
+async def delete_workout_session(
+    workout_session_id: int,
+    session: AnnotatedSession,
+    current_user: CurrentUser,
+):
+    workout_session_to_deleted = await session.scalar(
+        select(WorkoutSession).where(WorkoutSession.id == workout_session_id)
+    )
+    if not workout_session_to_deleted:
+        raise HTTPException(
+            status_code=HTTPStatus.NOT_FOUND,
+            detail='Workout Session not found',
+        )
+    if workout_session_to_deleted.user_id != current_user.id:
+        raise HTTPException(
+            status_code=HTTPStatus.FORBIDDEN,
+            detail='You do not have permission to delete this workout session',
+        )
+
+    await session.delete(workout_session_to_deleted)
+    await session.commit()
+    return {'message': 'Workout Session deleted'}
 
 
 @router.post(
@@ -135,6 +175,40 @@ async def create_workout_exercise(
     await session.refresh(new_workout_exercise)
 
     return new_workout_exercise
+
+
+@router.delete(
+    '/workout-exercise/{workout_exercise_id}', response_model=Message
+)
+async def delete_workout_exercise(
+    workout_exercise_id: int,
+    session: AnnotatedSession,
+    current_user: CurrentUser,
+):
+    workout_exercise_to_deleted = await session.scalar(
+        select(WorkoutExercise).where(
+            WorkoutExercise.id == workout_exercise_id
+        )
+    )
+
+    if not workout_exercise_to_deleted:
+        raise HTTPException(
+            status_code=HTTPStatus.NOT_FOUND,
+            detail='Workout Exercise not found',
+        )
+    workout_session = await session.scalar(
+        select(WorkoutSession).where(
+            WorkoutSession.id == workout_exercise_to_deleted.session_id
+        )
+    )
+    if workout_session.user_id != current_user.id:
+        raise HTTPException(
+            status_code=HTTPStatus.FORBIDDEN,
+            detail='You dont have permission to delete this workout exercise',
+        )
+    await session.delete(workout_exercise_to_deleted)
+    await session.commit()
+    return {'message': 'Workout Exercise deleted'}
 
 
 @router.get('/all-sessions', response_model=ResponseWorkoutSessionList)
