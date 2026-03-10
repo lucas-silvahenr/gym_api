@@ -43,6 +43,42 @@ def test_create_exercise_already_exists(client, exercise):
     }
 
 
+def test_update_exercise(client, exercise):
+    response = client.put(
+        f'/gym/exercise/{exercise.id}',
+        json={
+            'name': 'deadlift',
+            'description': 'This is a deadlift description',
+        },
+    )
+    assert response.status_code == HTTPStatus.OK
+    assert response.json() == {'message': 'Exercise updated'}
+
+
+def test_update_inexistent_exercise(client):
+    response = client.put(
+        '/gym/exercise/999',
+        json={
+            'name': 'deadlift',
+            'description': 'This is a deadlift description',
+        },
+    )
+    assert response.status_code == HTTPStatus.NOT_FOUND
+    assert response.json() == {'detail': 'Exercise not found'}
+
+
+def test_update_exercise_without_name(client, exercise):
+    response = client.put(
+        f'/gym/exercise/{exercise.id}',
+        json={
+            'name': '',
+            'description': 'This is a deadlift description',
+        },
+    )
+    assert response.status_code == HTTPStatus.UNPROCESSABLE_ENTITY
+    assert response.json() == {'detail': 'Name cannot be empty'}
+
+
 def test_delete_exercise(client, exercise):
     response = client.delete(f'/gym/exercise/{exercise.id}')
     assert response.status_code == HTTPStatus.OK
@@ -136,6 +172,51 @@ def test_delete_inexistent_workout_session(client, token):
     assert response.json() == {'detail': 'Workout Session not found'}
 
 
+def test_update_workout_session(client, token, workout_session, exercise):
+    response = client.put(
+        f'/gym/workout-session/{workout_session.id}',
+        headers={'Authorization': f'Bearer {token}'},
+        json={
+            'name': 'ABC',
+            'exercises': [
+                {
+                    'exercise_id': exercise.id,
+                    'session_id': workout_session.id,
+                    'order': 2,
+                    'rep': 10,
+                    'weight': 25.0,
+                }
+            ],
+        },
+    )
+    assert response.status_code == HTTPStatus.OK
+    assert response.json() == {'message': 'Workout Session updated'}
+
+
+def test_update_inexistent_workout_session(
+    client, token, workout_session, exercise
+):
+    response = client.put(
+        '/gym/workout-session/999',
+        headers={'Authorization': f'Bearer {token}'},
+        json={
+            'name': 'ABC',
+            'exercises': [
+                {
+                    'exercise_id': exercise.id,
+                    'session_id': workout_session.id,
+                    'order': 2,
+                    'rep': 10,
+                    'weight': 25.0,
+                }
+            ],
+        },
+    )
+
+    assert response.json() == {'detail': 'Workout Session not found'}
+    assert response.status_code == HTTPStatus.NOT_FOUND
+
+
 def test_creat_workout_exercise(client, workout_session, token, exercise):
     response = client.post(
         '/gym/workout-exercise',
@@ -210,6 +291,41 @@ def test_creat_workout_exercise_invalid_exercise_id(
 
     assert response.status_code == HTTPStatus.NOT_FOUND
     assert response.json() == {'detail': 'Exercise not found'}
+
+
+def test_update_workout_exercise(client, token, workout_exercise, exercise):
+    response = client.put(
+        f'/gym/workout-exercise/{workout_exercise.id}',
+        headers={'Authorization': f'Bearer {token}'},
+        json={
+            'exercise_id': exercise.id,
+            'session_id': workout_exercise.session_id,
+            'order': 2,
+            'rep': 10,
+            'weight': 25.0,
+        },
+    )
+    assert response.status_code == HTTPStatus.OK
+    assert response.json() == {'message': 'Workout Exercise updated'}
+
+
+def test_update_inexistent_workout_exercise(
+    client, token, workout_exercise, exercise
+):
+    response = client.put(
+        '/gym/workout-exercise/999',
+        headers={'Authorization': f'Bearer {token}'},
+        json={
+            'exercise_id': exercise.id,
+            'session_id': workout_exercise.session_id,
+            'order': 2,
+            'rep': 10,
+            'weight': 25.0,
+        },
+    )
+
+    assert response.json() == {'detail': 'Workout Exercise not found'}
+    assert response.status_code == HTTPStatus.NOT_FOUND
 
 
 def test_delete_workout_exercise(client, workout_exercise, token):

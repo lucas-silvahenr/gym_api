@@ -79,6 +79,31 @@ async def delete_exercise(exercise_id: int, session: AnnotatedSession):
     return {'message': 'Exercise deleted'}
 
 
+@router.put('/exercise/{exercise_id}', response_model=Message)
+async def update_exercise(
+    exercise_id: int, session: AnnotatedSession, exercise: ExerciseSchema
+):
+    exercise_to_update = await session.scalar(
+        select(PublicExercise).where(PublicExercise.id == exercise_id)
+    )
+    if not exercise_to_update:
+        raise HTTPException(
+            status_code=HTTPStatus.NOT_FOUND, detail='Exercise not found'
+        )
+
+    if not exercise.name:
+        raise HTTPException(
+            status_code=HTTPStatus.UNPROCESSABLE_ENTITY,
+            detail='Name cannot be empty',
+        )
+
+    exercise_to_update.name = exercise.name
+    exercise_to_update.description = exercise.description
+    await session.commit()
+    await session.refresh(exercise_to_update)
+    return {'message': 'Exercise updated'}
+
+
 @router.post(
     '/workout-session',
     response_model=WorkoutSessionSchema,
@@ -104,6 +129,42 @@ async def creat_workout_session(
     return new_workout_session
 
 
+@router.put('/workout-session/{workout_session_id}', response_model=Message)
+async def update_workout_session(
+    workout_session_id: int,
+    workout_session: WorkoutSessionSchema,
+    session: AnnotatedSession,
+    current_user: CurrentUser,
+):
+    workout_session_to_update = await session.scalar(
+        select(WorkoutSession).where(
+            WorkoutSession.id == workout_session_id,
+            WorkoutSession.user_id == current_user.id,
+        )
+    )
+    if not workout_session_to_update:
+        raise HTTPException(
+            status_code=HTTPStatus.NOT_FOUND,
+            detail='Workout Session not found',
+        )
+
+    workout_session_to_update.name = workout_session.name
+    workout_session_to_update.exercises.clear()
+    for exercise in workout_session.exercises:
+        workout_session_to_update.exercises.append(
+            WorkoutExercise(
+                exercise_id=exercise.exercise_id,
+                session_id=workout_session_to_update.id,
+                order=exercise.order,
+                rep=exercise.rep,
+                weight=exercise.weight,
+            )
+        )
+    await session.commit()
+    await session.refresh(workout_session_to_update)
+    return {'message': 'Workout Session updated'}
+
+
 @router.delete('/workout-session/{workout_session_id}', response_model=Message)
 async def delete_workout_session(
     workout_session_id: int,
@@ -111,17 +172,15 @@ async def delete_workout_session(
     current_user: CurrentUser,
 ):
     workout_session_to_deleted = await session.scalar(
-        select(WorkoutSession).where(WorkoutSession.id == workout_session_id)
+        select(WorkoutSession).where(
+            WorkoutSession.id == workout_session_id,
+            WorkoutSession.user_id == current_user.id,
+        )
     )
     if not workout_session_to_deleted:
         raise HTTPException(
             status_code=HTTPStatus.NOT_FOUND,
             detail='Workout Session not found',
-        )
-    if workout_session_to_deleted.user_id != current_user.id:
-        raise HTTPException(
-            status_code=HTTPStatus.FORBIDDEN,
-            detail='You do not have permission to delete this workout session',
         )
 
     await session.delete(workout_session_to_deleted)
@@ -177,6 +236,38 @@ async def create_workout_exercise(
     return new_workout_exercise
 
 
+@router.put('/workout-exercise/{workout_exercise_id}', response_model=Message)
+async def update_workout_exercise(
+    workout_exercise_id: int,
+    workout_exercise: WorkoutExerciseSchema,
+    session: AnnotatedSession,
+    current_user: CurrentUser,
+):
+    workout_exercise_to_update = await session.scalar(
+        select(WorkoutExercise)
+        .join(WorkoutSession)
+        .where(
+            WorkoutExercise.id == workout_exercise_id,
+            WorkoutSession.user_id == current_user.id,
+        )
+    )
+
+    if not workout_exercise_to_update:
+        raise HTTPException(
+            status_code=HTTPStatus.NOT_FOUND,
+            detail='Workout Exercise not found',
+        )
+
+    workout_exercise_to_update.exercise_id = workout_exercise.exercise_id
+    workout_exercise_to_update.order = workout_exercise.order
+    workout_exercise_to_update.rep = workout_exercise.rep
+    workout_exercise_to_update.weight = workout_exercise.weight
+
+    await session.commit()
+    await session.refresh(workout_exercise_to_update)
+    return {'message': 'Workout Exercise updated'}
+
+
 @router.delete(
     '/workout-exercise/{workout_exercise_id}', response_model=Message
 )
@@ -186,8 +277,11 @@ async def delete_workout_exercise(
     current_user: CurrentUser,
 ):
     workout_exercise_to_deleted = await session.scalar(
-        select(WorkoutExercise).where(
-            WorkoutExercise.id == workout_exercise_id
+        select(WorkoutExercise)
+        .join(WorkoutSession)
+        .where(
+            WorkoutExercise.id == workout_exercise_id,
+            WorkoutSession.user_id == current_user.id,
         )
     )
 
@@ -196,18 +290,10 @@ async def delete_workout_exercise(
             status_code=HTTPStatus.NOT_FOUND,
             detail='Workout Exercise not found',
         )
-    workout_session = await session.scalar(
-        select(WorkoutSession).where(
-            WorkoutSession.id == workout_exercise_to_deleted.session_id
-        )
-    )
-    if workout_session.user_id != current_user.id:
-        raise HTTPException(
-            status_code=HTTPStatus.FORBIDDEN,
-            detail='You dont have permission to delete this workout exercise',
-        )
+
     await session.delete(workout_exercise_to_deleted)
     await session.commit()
+
     return {'message': 'Workout Exercise deleted'}
 
 
