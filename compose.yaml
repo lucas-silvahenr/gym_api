@@ -1,0 +1,25 @@
+services:
+  gym_api_database:
+    image: postgres
+    volumes:
+      - pgdata:/var/lib/postgresql/
+    env_file:
+      - .env
+    ports:
+      - "5432:5432"
+
+  gym_api_app:
+    image: gym_api_app
+    entrypoint: ./entrypoint.sh
+    build: .
+    ports:
+      - "8000:8000"
+    depends_on:
+      - gym_api_database
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: postgresql+psycopg://app_user:app_password@gym_api_database:5432/app_db
+
+volumes:
+  pgdata:
