@@ -92,7 +92,7 @@ def test_delete_inexistent_exercise(client):
 
 
 def test_read_all_exercises(client, exercise):
-    response = client.get('/gym/all-exercises')
+    response = client.get('/gym/exercise')
     exercise_dict = [
         {
             'name': exercise.name,
@@ -355,7 +355,7 @@ def test_read_all_sessions(
     token,
 ):
     response = client.get(
-        'gym/all-sessions', headers={'Authorization': f'Bearer {token}'}
+        'gym/sessions', headers={'Authorization': f'Bearer {token}'}
     )
 
     assert response.status_code == HTTPStatus.OK
