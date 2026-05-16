@@ -35,9 +35,8 @@ class ExerciseList(BaseModel):
     exercises: list[ResponseExerciseSchema]
 
 
-class WorkoutExerciseSchema(BaseModel):
+class WorkoutExerciseCreateSchema(BaseModel):
     exercise_id: int
-    session_id: int
     order: int
     rep: int
     weight: float
@@ -45,9 +44,14 @@ class WorkoutExerciseSchema(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
+class WorkoutExerciseResponseSchema(WorkoutExerciseCreateSchema):
+    id: int
+    session_id: int
+
+
 class WorkoutSessionSchema(BaseModel):
     name: str
-    exercises: list[WorkoutExerciseSchema] = []
+    exercises: list[WorkoutExerciseCreateSchema] = []
     model_config = ConfigDict(from_attributes=True)
 
 

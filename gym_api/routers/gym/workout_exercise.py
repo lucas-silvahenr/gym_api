@@ -14,7 +14,7 @@ from gym_api.models import (
 )
 from gym_api.schemas import (
     Message,
-    WorkoutExerciseSchema,
+    WorkoutExerciseCreateSchema,
 )
 from gym_api.security import get_current_user
 
@@ -25,23 +25,20 @@ router = APIRouter(prefix='/workout-exercise', tags=['workout-exercise'])
 
 
 @router.post(
-    '/',
-    response_model=WorkoutExerciseSchema,
+    '/session/{session_id}',
+    response_model=WorkoutExerciseCreateSchema,
     status_code=HTTPStatus.CREATED,
 )
 async def create_workout_exercise(
-    workout_exercise: WorkoutExerciseSchema,
+    workout_exercise: WorkoutExerciseCreateSchema,
     session: AnnotatedSession,
     current_user: CurrentUser,
+    session_id: int,
 ):
-    if not workout_exercise.session_id:
-        raise HTTPException(
-            status_code=HTTPStatus.UNPROCESSABLE_ENTITY,
-            detail='Session cannot be empty',
-        )
     workout_session = await session.scalar(
         select(WorkoutSession).where(
-            WorkoutSession.id == workout_exercise.session_id
+            WorkoutSession.id == session_id,
+            WorkoutSession.user_id == current_user.id,
         )
     )
     if not workout_session:
@@ -58,7 +55,7 @@ async def create_workout_exercise(
             status_code=HTTPStatus.NOT_FOUND, detail='Exercise not found'
         )
     new_workout_exercise = WorkoutExercise(
-        session_id=workout_exercise.session_id,
+        session_id=session_id,
         exercise_id=workout_exercise.exercise_id,
         order=workout_exercise.order,
         rep=workout_exercise.rep,
@@ -72,10 +69,13 @@ async def create_workout_exercise(
     return new_workout_exercise
 
 
-@router.put('/{workout_exercise_id}', response_model=Message)
+@router.put(
+    '/session/{session_id}/{workout_exercise_id}', response_model=Message
+)
 async def update_workout_exercise(
+    session_id: int,
     workout_exercise_id: int,
-    workout_exercise: WorkoutExerciseSchema,
+    workout_exercise: WorkoutExerciseCreateSchema,
     session: AnnotatedSession,
     current_user: CurrentUser,
 ):
@@ -83,8 +83,9 @@ async def update_workout_exercise(
         select(WorkoutExercise)
         .join(WorkoutSession)
         .where(
-            WorkoutExercise.id == workout_exercise_id,
             WorkoutSession.user_id == current_user.id,
+            WorkoutSession.id == session_id,
+            WorkoutExercise.id == workout_exercise_id,
         )
     )
 
@@ -104,8 +105,11 @@ async def update_workout_exercise(
     return {'message': 'Workout Exercise updated'}
 
 
-@router.delete('/{workout_exercise_id}', response_model=Message)
+@router.delete(
+    '/session/{session_id}/{workout_exercise_id}', response_model=Message
+)
 async def delete_workout_exercise(
+    session_id: int,
     workout_exercise_id: int,
     session: AnnotatedSession,
     current_user: CurrentUser,
@@ -114,8 +118,9 @@ async def delete_workout_exercise(
         select(WorkoutExercise)
         .join(WorkoutSession)
         .where(
-            WorkoutExercise.id == workout_exercise_id,
             WorkoutSession.user_id == current_user.id,
+            WorkoutSession.id == session_id,
+            WorkoutExercise.id == workout_exercise_id,
         )
     )
 
