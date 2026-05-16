@@ -19,9 +19,6 @@ from gym_api.schemas import (
 from gym_api.schemas import (
     ResponseWorkoutSessionList,
 )
-from gym_api.schemas import (
-    WorkoutExerciseSchema as WorkoutExerciseSchema,
-)
 from gym_api.security import get_current_user
 
 from .exercise import router as exercise_router

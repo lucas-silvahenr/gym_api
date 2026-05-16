@@ -1,7 +1,7 @@
 from http import HTTPStatus
 
 
-def test_create_workout_session(client, token):
+def test_create_empty_workout_session(client, token):
     response = client.post(
         '/gym/workout-session',
         headers={'Authorization': f'Bearer {token}'},
@@ -12,6 +12,39 @@ def test_create_workout_session(client, token):
 
     assert response.status_code == HTTPStatus.CREATED
     assert response.json() == {'name': 'Biceps Workout', 'exercises': []}
+
+
+def test_create_workout_session_with_exercises(
+    client, token, workout_exercise
+):
+    response = client.post(
+        '/gym/workout-session',
+        headers={'Authorization': f'Bearer {token}'},
+        json={
+            'name': 'Biceps Workout',
+            'exercises': [
+                {
+                    'exercise_id': workout_exercise.id,
+                    'order': workout_exercise.order,
+                    'rep': workout_exercise.rep,
+                    'weight': workout_exercise.weight,
+                }
+            ],
+        },
+    )
+
+    assert response.status_code == HTTPStatus.CREATED
+    assert response.json() == {
+        'name': 'Biceps Workout',
+        'exercises': [
+            {
+                'exercise_id': workout_exercise.id,
+                'order': workout_exercise.order,
+                'rep': workout_exercise.rep,
+                'weight': workout_exercise.weight,
+            }
+        ],
+    }
 
 
 def test_create_workout_session_without_name(client, token):
@@ -132,7 +165,6 @@ def test_read_all_sessions(
                 'exercises': [
                     {
                         'exercise_id': workout_exercise.id,
-                        'session_id': workout_session.id,
                         'order': workout_exercise.order,
                         'rep': workout_exercise.rep,
                         'weight': workout_exercise.weight,

@@ -41,7 +41,22 @@ async def creat_workout_session(
     new_workout_session = WorkoutSession(
         user_id=current_user.id, name=workout_session.name
     )
+    new_workout_session.exercises = []
+
     session.add(new_workout_session)
+    await session.flush()
+
+    for exercise in workout_session.exercises:
+        new_workout_session.exercises.append(
+            WorkoutExercise(
+                session_id=new_workout_session.id,
+                exercise_id=exercise.exercise_id,
+                order=exercise.order,
+                rep=exercise.rep,
+                weight=exercise.weight,
+            )
+        )
+
     await session.commit()
     await session.refresh(new_workout_session)
 
