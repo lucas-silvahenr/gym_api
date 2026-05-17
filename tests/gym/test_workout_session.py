@@ -162,6 +162,7 @@ def test_read_all_sessions(
     assert response.json() == {
         'sessions': [
             {
+                'id': workout_session.id,
                 'name': 'Biceps Workout',
                 'exercises': [
                     {

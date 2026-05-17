@@ -55,6 +55,13 @@ class WorkoutSessionSchema(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
+class ResponseWorkoutSessionSchema(BaseModel):
+    id: int
+    name: str
+    exercises: list[WorkoutExerciseCreateSchema] = []
+    model_config = ConfigDict(from_attributes=True)
+
+
 class ResponseWorkoutSessionList(BaseModel):
-    sessions: list[WorkoutSessionSchema]
+    sessions: list[ResponseWorkoutSessionSchema]
     model_config = ConfigDict(from_attributes=True)
