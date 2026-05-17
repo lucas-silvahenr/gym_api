@@ -102,3 +102,13 @@ def test_read_all_exercises(client, exercise):
     ]
     assert response.status_code == HTTPStatus.OK
     assert response.json() == {'exercises': exercise_dict}
+
+
+def test_read_one_exercise(client, exercise):
+    response = client.get(f'/gym/exercise/{exercise.id}')
+
+    assert response.status_code == HTTPStatus.OK
+    assert response.json() == {
+        'name': exercise.name,
+        'description': exercise.description,
+    }

@@ -59,6 +59,14 @@ async def read_exercises(session: AnnotatedSession):
     return {'exercises': all_exercises.all()}
 
 
+@router.get('/{exercise_id}', response_model=ExerciseSchema)
+async def read_one_exercise(session: AnnotatedSession, exercise_id: int):
+    exercise = await session.scalar(
+        select(PublicExercise).where(PublicExercise.id == exercise_id)
+    )
+    return exercise
+
+
 @router.delete('/{exercise_id}', response_model=Message)
 async def delete_exercise(exercise_id: int, session: AnnotatedSession):
     exercise_to_delete = await session.scalar(
