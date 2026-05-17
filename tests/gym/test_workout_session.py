@@ -154,13 +154,15 @@ def test_read_all_sessions(
     token,
 ):
     response = client.get(
-        'gym/sessions', headers={'Authorization': f'Bearer {token}'}
+        'gym/workout-session/sessions',
+        headers={'Authorization': f'Bearer {token}'},
     )
 
     assert response.status_code == HTTPStatus.OK
     assert response.json() == {
         'sessions': [
             {
+                'id': workout_session.id,
                 'name': 'Biceps Workout',
                 'exercises': [
                     {
@@ -172,4 +174,26 @@ def test_read_all_sessions(
                 ],
             }
         ]
+    }
+
+
+def test_read_one_session(
+    client, workout_session, workout_exercise, user, token
+):
+    response = client.get(
+        f'gym/workout-session/{workout_session.id}',
+        headers={'Authorization': f'Bearer {token}'},
+    )
+
+    assert response.status_code == HTTPStatus.OK
+    assert response.json() == {
+        'name': 'Biceps Workout',
+        'exercises': [
+            {
+                'exercise_id': workout_exercise.id,
+                'order': workout_exercise.order,
+                'rep': workout_exercise.rep,
+                'weight': workout_exercise.weight,
+            }
+        ],
     }
