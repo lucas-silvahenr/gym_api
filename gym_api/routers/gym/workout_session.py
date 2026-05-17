@@ -4,6 +4,7 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from gym_api.database import get_session
 from gym_api.models import (
@@ -13,6 +14,7 @@ from gym_api.models import (
 )
 from gym_api.schemas import (
     Message,
+    ResponseWorkoutSessionList,
     WorkoutSessionSchema,
 )
 from gym_api.security import get_current_user
@@ -63,7 +65,9 @@ async def creat_workout_session(
     return new_workout_session
 
 
-@router.put('/{workout_session_id}', response_model=Message)
+@router.put(
+    '/{workout_session_id}', response_model=Message, status_code=HTTPStatus.OK
+)
 async def update_workout_session(
     workout_session_id: int,
     workout_session: WorkoutSessionSchema,
@@ -99,7 +103,9 @@ async def update_workout_session(
     return {'message': 'Workout Session updated'}
 
 
-@router.delete('/{workout_session_id}', response_model=Message)
+@router.delete(
+    '/{workout_session_id}', response_model=Message, status_code=HTTPStatus.OK
+)
 async def delete_workout_session(
     workout_session_id: int,
     session: AnnotatedSession,
@@ -120,3 +126,57 @@ async def delete_workout_session(
     await session.delete(workout_session_to_deleted)
     await session.commit()
     return {'message': 'Workout Session deleted'}
+
+
+@router.get(
+    '/sessions',
+    response_model=ResponseWorkoutSessionList,
+    status_code=HTTPStatus.OK,
+)
+async def read_all_sessions(
+    current_user: CurrentUser,
+    session: AnnotatedSession,
+):
+    result = await session.execute(
+        select(WorkoutSession)
+        .where(WorkoutSession.user_id == current_user.id)
+        .options(selectinload(WorkoutSession.exercises))
+    )
+    sessions = result.scalars().all()
+
+    for s in sessions:
+        await session.refresh(
+            s, attribute_names=['exercises']
+        )  # Forçar recarregamento das relações (solução provisória)
+
+    return {'sessions': sessions}
+
+
+@router.get(
+    '/{session_id}',
+    response_model=WorkoutSessionSchema,
+    status_code=HTTPStatus.OK,
+)
+async def read_workout_session(
+    current_user: CurrentUser, session: AnnotatedSession, session_id: int
+):
+    result = await session.execute(
+        select(WorkoutSession)
+        .where(
+            WorkoutSession.user_id == current_user.id,
+            WorkoutSession.id == session_id,
+        )
+        .options(selectinload(WorkoutSession.exercises))
+    )
+
+    workout_session = result.scalar()
+    await session.refresh(
+        workout_session, attribute_names=['exercises']
+    )  # Forçar recarregamento das relações (solução provisória)
+
+    if not workout_session:
+        raise HTTPException(
+            status_code=HTTPStatus.NOT_FOUND,
+            detail='Workout Session not found',
+        )
+    return workout_session
